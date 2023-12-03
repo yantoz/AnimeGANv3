@@ -24,7 +24,7 @@ def preprocessing(img, x8=True):
 
 class AnimeGAN():
 
-    def __init__(self, onnxFile, model, map_location=None):
+    def __init__(self, onnxFile, map_location=None):
         self.session = ort.InferenceSession(onnxFile)
         if map_location == torch.device('cpu'):
             self.session.set_providers(['CPUExecutionProvider'])
@@ -34,7 +34,6 @@ class AnimeGAN():
         outputs = self.session.get_outputs()
         for i in range(len(outputs)):
             log.debug("Output[{}]: name={}, shape={}, type={}".format(i, outputs[i].name, outputs[i].shape, outputs[i].type))
-        self._model = model
 
     def __call__(self, image, **kwargs):
         
@@ -47,7 +46,8 @@ class AnimeGAN():
         image = image.astype(float)
         
         # infer
-        output = self.session.run(None, {self._model[1]: [image]})[0]
+        inputs = self.session.get_inputs()
+        output = self.session.run(None, {inputs[0].name: [image]})[0]
         output = output[0]
         
         # postprocess
@@ -63,16 +63,15 @@ def animegan(
 ):
 
     MODELS = {
-        "v3hayao":          ("https://github.com/TachibanaYoshino/AnimeGANv3/releases/download/v1.1.0/AnimeGANv3_Hayao_36.onnx",       "AnimeGANv3_input:0"),
-        "v3jpface":         ("https://huggingface.co/vumichien/AnimeGANv3_JP_face/resolve/main/AnimeGANv3_JP_face.onnx",               "AnimeGANv3_input:0"),
-        "v3portraitsketch": ("https://huggingface.co/vumichien/AnimeGANv3_PortraitSketch/resolve/main/AnimeGANv3_PortraitSketch.onnx", "animeganv3_input:0"),
-        "v2hayao":          ("https://huggingface.co/vumichien/AnimeGANv2_Hayao/resolve/main/AnimeGANv2_Hayao.onnx",                   "generator_input:0"),
-        "v2paprika":        ("https://huggingface.co/vumichien/AnimeGANv2_Paprika/resolve/main/AnimeGANv2_Paprika.onnx",               "generator_input:0"),
-        "v2shinkai":        ("https://huggingface.co/vumichien/AnimeGANv2_Shinkai/resolve/main/AnimeGANv2_Shinkai.onnx",               "generator_input:0"),
+        "v3hayao":          "https://github.com/TachibanaYoshino/AnimeGANv3/releases/download/v1.1.0/AnimeGANv3_Hayao_36.onnx",
+        "v3jpface":         "https://huggingface.co/vumichien/AnimeGANv3_JP_face/resolve/main/AnimeGANv3_JP_face.onnx",
+        "v3portraitsketch": "https://huggingface.co/vumichien/AnimeGANv3_PortraitSketch/resolve/main/AnimeGANv3_PortraitSketch.onnx",
+        "v2hayao":          "https://huggingface.co/vumichien/AnimeGANv2_Hayao/resolve/main/AnimeGANv2_Hayao.onnx",
+        "v2paprika":        "https://huggingface.co/vumichien/AnimeGANv2_Paprika/resolve/main/AnimeGANv2_Paprika.onnx",
+        "v2shinkai":        "https://huggingface.co/vumichien/AnimeGANv2_Shinkai/resolve/main/AnimeGANv2_Shinkai.onnx",
     }
 
-    model = MODELS[id]
-    url = model[0]
+    url = MODELS[id]
     
     TARGET = os.path.join(torch.hub.get_dir(), "AnimeGAN")
     FILENAME = url.split("/")[-1]
@@ -83,4 +82,4 @@ def animegan(
         print("Downloading {} to {}".format(url, path)) 
         torch.hub.download_url_to_file(url, path, progress=progress)
   
-    return AnimeGAN(path, model, map_location)
+    return AnimeGAN(path, map_location)
